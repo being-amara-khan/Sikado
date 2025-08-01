@@ -341,6 +341,12 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
+// Test endpoint
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'Sikado API is working!', timestamp: new Date().toISOString() });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Test the API at: http://localhost:${PORT}/api/test`);
 }); 
