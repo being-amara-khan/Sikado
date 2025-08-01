@@ -1,4 +1,4 @@
-# TeachConnect - Student Teacher Connection App
+# Sikado - Student Teacher Connection App
 
 A modern web application that connects students with qualified teachers for personalized learning experiences.
 
