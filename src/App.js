@@ -6,7 +6,6 @@ import { authAPI, profileAPI, teachersAPI, contactAPI } from './services/api';
 const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
   const [currentUser, setCurrentUser] = useState(null);
-  const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -774,26 +773,40 @@ const App = () => {
   // Explore Teachers Component
   const ExploreTeachers = () => {
     const [loading, setLoading] = useState(false);
+    const [localTeachers, setLocalTeachers] = useState([]);
 
-    useEffect(() => {
-      fetchTeachers();
-    }, []);
-
-    const fetchTeachers = async () => {
+    const fetchTeachers = async (search = '', subject = '') => {
       setLoading(true);
       try {
+        console.log('Fetching teachers with filters:', { search, subject });
         const filters = {};
-        if (searchTerm) filters.search = searchTerm;
-        if (subjectFilter) filters.subject = subjectFilter;
+        if (search) filters.search = search;
+        if (subject) filters.subject = subject;
 
         const teachersData = await teachersAPI.getTeachers(filters);
-        setTeachers(teachersData);
+        console.log('Teachers data received:', teachersData);
+        setLocalTeachers(teachersData);
       } catch (error) {
         console.error('Error fetching teachers:', error);
+        setLocalTeachers([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
     };
+
+    // Initial load
+    useEffect(() => {
+      fetchTeachers();
+    }, []);
+
+    // Handle search and filter changes
+    useEffect(() => {
+      const timeoutId = setTimeout(() => {
+        fetchTeachers(searchTerm, subjectFilter);
+      }, 500); // Debounce search
+
+      return () => clearTimeout(timeoutId);
+    }, [searchTerm, subjectFilter]);
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4">
@@ -861,15 +874,21 @@ const App = () => {
                 </select>
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items-end space-x-3">
                 <button
                   onClick={() => {
                     setSearchTerm('');
                     setSubjectFilter('');
                   }}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl font-semibold hover:from-gray-200 hover:to-gray-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="flex-1 px-6 py-4 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl font-semibold hover:from-gray-200 hover:to-gray-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   Clear Filters
+                </button>
+                <button
+                  onClick={() => fetchTeachers(searchTerm, subjectFilter)}
+                  className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Refresh
                 </button>
               </div>
             </div>
@@ -880,10 +899,11 @@ const App = () => {
             <div className="text-center py-16">
               <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
               <p className="mt-6 text-xl text-gray-600 font-medium">Loading teachers...</p>
+              <p className="mt-2 text-sm text-gray-500">This may take a few seconds</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {teachers.map((teacher) => (
+              {localTeachers.map((teacher) => (
                 <div key={teacher.id} className="group bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl overflow-hidden transition-all duration-300 transform hover:-translate-y-2 border border-white/20">
                   <div className="p-8">
                     <div className="flex items-center space-x-4 mb-6">
@@ -892,6 +912,9 @@ const App = () => {
                           src={teacher.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616c996085b?w=150&h=150&fit=crop&crop=face'}
                           alt={teacher.name}
                           className="w-20 h-20 rounded-2xl object-cover border-4 border-purple-100 group-hover:border-purple-200 transition-all duration-300"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1494790108755-2616c996085b?w=150&h=150&fit=crop&crop=face';
+                          }}
                         />
                         <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                           <CheckCircle className="w-3 h-3 text-white" />
@@ -927,11 +950,12 @@ const App = () => {
                         setSelectedTeacher(teacher);
                         setCurrentPage('contact-form');
                       }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-xl group-hover:shadow-purple-500/25"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-xl group-hover:shadow-purple-500/25 disabled:opacity-50 disabled:transform-none"
+                      disabled={loading}
                     >
                       <span className="flex items-center justify-center space-x-2">
-                        <span>Contact Teacher</span>
-                        <ArrowRight className="w-5 h-5" />
+                        <span>{loading ? 'Loading...' : 'Contact Teacher'}</span>
+                        {!loading && <ArrowRight className="w-5 h-5" />}
                       </span>
                     </button>
                   </div>
@@ -940,7 +964,7 @@ const App = () => {
             </div>
           )}
 
-          {!loading && teachers.length === 0 && (
+          {!loading && localTeachers.length === 0 && (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Search className="w-12 h-12 text-gray-400" />
